@@ -2,8 +2,10 @@ package models
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -64,6 +66,12 @@ func GetItemByCode(code string) (Item, error) {
 		return Item{}, err
 	}
 
+	code, err = EnsureCode(code)
+
+	if err != nil {
+		return Item{}, err
+	}
+
 	item := Item{}
 
 	sqlErr := statement.QueryRow(code).Scan(&item.Name, &item.Code, &item.Price)
@@ -92,6 +100,12 @@ func AddItem(item Item) (bool, error) {
 
 	defer statement.Close()
 
+	item.Code, err = EnsureCode(item.Code)
+
+	if err != nil {
+		return false, err
+	}
+
 	convert := ConvertToInt(item.Price)
 
 	_, err = statement.Exec(item.Code, item.Name, convert)
@@ -119,6 +133,12 @@ func UpdatePrice(code string, amount string) (bool, error) {
 	}
 
 	defer statement.Close()
+
+	code, err = EnsureCode(code)
+
+	if err != nil {
+		return false, err
+	}
 
 	convert := ConvertToInt(amount)
 
@@ -172,4 +192,17 @@ func ConvertToInt(amount string) int {
 	}
 
 	return i
+}
+
+func EnsureCode(code string) (string, error) {
+	// This just removes them if they are there. We will add them regardless
+	s := strings.Trim(code, "-")
+	i := 4
+
+	if len(s) != 16 {
+		return s, errors.New("Code is not the required 16 characters in length!")
+	}
+
+	// There is definitely more elegant ways to do this
+	return (s[:i] + "-" + s[:i] + "-" + s[:i] + "-" + s[:i]), nil
 }
