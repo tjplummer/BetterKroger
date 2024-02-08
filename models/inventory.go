@@ -2,6 +2,8 @@ package models
 
 import (
 	"database/sql"
+	"fmt"
+	"strconv"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -9,7 +11,7 @@ import (
 var DB *sql.DB
 
 func StartDB() error {
-	db, err := sql.Open("sqlite3", "./inventory.db")
+	db, err := sql.Open("sqlite3", "./bk.db")
 	if err != nil {
 		return err
 	}
@@ -25,7 +27,7 @@ type Item struct {
 }
 
 func GetItems() ([]Item, error) {
-	rows, err := DB.Query("SELECT * FROM ITEMS")
+	rows, err := DB.Query("SELECT * FROM INVENTORY")
 
 	if err != nil {
 		return nil, err
@@ -56,7 +58,7 @@ func GetItems() ([]Item, error) {
 }
 
 func GetItemByCode(code string) (Item, error) {
-	statement, err := DB.Prepare("SELECT * FROM ITEMS WHERE CODE = ?")
+	statement, err := DB.Prepare("SELECT * FROM INVENTORY WHERE CODE = ?")
 
 	if err != nil {
 		return Item{}, err
@@ -82,7 +84,7 @@ func AddItem(item Item) (bool, error) {
 		return false, err
 	}
 
-	statement, err := transaction.Prepare("INSERT INTO ITEMS (NAME, CODE, PRICE) VALUES (?, ?, ?))")
+	statement, err := transaction.Prepare("INSERT INTO INVENTORY (CODE, NAME, PRICE) VALUES (?, ?, ?))")
 
 	if err != nil {
 		return false, err
@@ -90,7 +92,9 @@ func AddItem(item Item) (bool, error) {
 
 	defer statement.Close()
 
-	_, err = statement.Exec(item.Name, item.Code, item.Price)
+	convert := ConvertToInt(item.Price)
+
+	_, err = statement.Exec(item.Code, item.Name, convert)
 
 	if err != nil {
 		return false, err
@@ -101,14 +105,14 @@ func AddItem(item Item) (bool, error) {
 	return true, nil
 }
 
-func UpdatePrice(id int, amount int) (bool, error) {
+func UpdatePrice(code string, amount string) (bool, error) {
 	transaction, err := DB.Begin()
 
 	if err != nil {
 		return false, err
 	}
 
-	statement, err := transaction.Prepare("UPDATE ITEMS SET PRICE = ? WHERE CODE = ?")
+	statement, err := transaction.Prepare("UPDATE INVENTORY SET PRICE = ? WHERE CODE = ?")
 
 	if err != nil {
 		return false, err
@@ -116,7 +120,9 @@ func UpdatePrice(id int, amount int) (bool, error) {
 
 	defer statement.Close()
 
-	_, err = statement.Exec(amount, id)
+	convert := ConvertToInt(amount)
+
+	_, err = statement.Exec(convert, code)
 
 	if err != nil {
 		return false, err
@@ -134,7 +140,7 @@ func RemoveItem(id int) (bool, error) {
 		return false, err
 	}
 
-	statement, err := transaction.Prepare("DELETE FROM ITEMS WHERE CODE = ?")
+	statement, err := transaction.Prepare("DELETE FROM INVENTORY WHERE CODE = ?")
 
 	if err != nil {
 		return false, err
@@ -151,4 +157,19 @@ func RemoveItem(id int) (bool, error) {
 	transaction.Commit()
 
 	return true, nil
+}
+
+func ConvertToUSD(amount int) string {
+	return fmt.Sprintf("$%v", amount)
+}
+
+func ConvertToInt(amount string) int {
+	i, err := strconv.Atoi(amount[1:])
+
+	// This is NOT good and should not stay
+	if err != nil {
+		panic(err)
+	}
+
+	return i
 }

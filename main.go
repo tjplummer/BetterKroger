@@ -15,7 +15,8 @@ func main() {
 
 	v1 := r.Group("/api/v1")
 	{
-		v1.GET(GetItems)
+		v1.GET("", Heartbeat)
+		v1.GET("", GetItems)
 		v1.GET("/:code", GetItemByCode)
 		v1.POST("item", AddItem)
 		v1.PUT("/:code/:price", UpdatePrice)
@@ -23,6 +24,10 @@ func main() {
 	}
 
 	r.Run()
+}
+
+func Heartbeat(cx *gin.Context) {
+	cx.JSON(http.StatusOK, gin.H{"status": "Active"})
 }
 
 func GetItems(cx *gin.Context) {
@@ -71,10 +76,10 @@ func AddItem(cx *gin.Context) {
 }
 
 func UpdatePrice(cx *gin.Context) {
-	id := cx.Param("id")
+	code := cx.Param("code")
 	quantity := cx.Param("quantity")
 
-	success, err := models.UpdatePrice(id, quantity)
+	success, err := models.UpdatePrice(code, quantity)
 
 	if success {
 		cx.JSON(http.StatusOK, gin.H{"message": "Success"})
