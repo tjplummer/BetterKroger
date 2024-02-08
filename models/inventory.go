@@ -19,10 +19,9 @@ func StartDB() error {
 }
 
 type Item struct {
-	Id       int    `json:"id"`
-	Name     string `json:"name"`
-	FV       string `json:"type"`
-	Quantity int    `json:"quantity"`
+	Name  string `json:"name"`
+	Code  string `json:"code"`
+	Price string `json:"price"`
 }
 
 func GetItems() ([]Item, error) {
@@ -38,7 +37,7 @@ func GetItems() ([]Item, error) {
 
 	for rows.Next() {
 		item := Item{}
-		err = rows.Scan(&item.Id, &item.Name, &item.FV, &item.Quantity)
+		err = rows.Scan(&item.Name, &item.Code, &item.Price)
 
 		if err != nil {
 			return nil, err
@@ -56,8 +55,8 @@ func GetItems() ([]Item, error) {
 	return items, err
 }
 
-func GetItemById(id int) (Item, error) {
-	statement, err := DB.Prepare("SELECT * FROM ITEMS WHERE ID = ?")
+func GetItemByCode(code string) (Item, error) {
+	statement, err := DB.Prepare("SELECT * FROM ITEMS WHERE CODE = ?")
 
 	if err != nil {
 		return Item{}, err
@@ -65,7 +64,7 @@ func GetItemById(id int) (Item, error) {
 
 	item := Item{}
 
-	sqlErr := statement.QueryRow(id).Scan(&item.Id, &item.Name, &item.FV, &item.Quantity)
+	sqlErr := statement.QueryRow(code).Scan(&item.Name, &item.Code, &item.Price)
 
 	if sqlErr != nil {
 		if sqlErr == sql.ErrNoRows {
@@ -83,7 +82,7 @@ func AddItem(item Item) (bool, error) {
 		return false, err
 	}
 
-	statement, err := transaction.Prepare("INSERT INTO ITEMS (NAME, FV, QUANTITY) VALUES (?, ?, ?))")
+	statement, err := transaction.Prepare("INSERT INTO ITEMS (NAME, CODE, PRICE) VALUES (?, ?, ?))")
 
 	if err != nil {
 		return false, err
@@ -91,7 +90,7 @@ func AddItem(item Item) (bool, error) {
 
 	defer statement.Close()
 
-	_, err = statement.Exec(item.Name, item.FV, item.Quantity)
+	_, err = statement.Exec(item.Name, item.Code, item.Price)
 
 	if err != nil {
 		return false, err
@@ -102,14 +101,14 @@ func AddItem(item Item) (bool, error) {
 	return true, nil
 }
 
-func UpdateQuantity(id int, amount int) (bool, error) {
+func UpdatePrice(id int, amount int) (bool, error) {
 	transaction, err := DB.Begin()
 
 	if err != nil {
 		return false, err
 	}
 
-	statement, err := transaction.Prepare("UPDATE ITEMS SET QUANTITY = ? WHERE ID = ?")
+	statement, err := transaction.Prepare("UPDATE ITEMS SET PRICE = ? WHERE CODE = ?")
 
 	if err != nil {
 		return false, err
@@ -135,7 +134,7 @@ func RemoveItem(id int) (bool, error) {
 		return false, err
 	}
 
-	statement, err := transaction.Prepare("DELETE FROM ITEMS WHERE ID = ?")
+	statement, err := transaction.Prepare("DELETE FROM ITEMS WHERE CODE = ?")
 
 	if err != nil {
 		return false, err
